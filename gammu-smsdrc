@@ -1,0 +1,13 @@
+[gammu]
+device = /dev/ttyUSB0
+connection = at
+
+[smsd]
+service = files
+logfile = /dev/stdout
+debuglevel = 1
+RunOnReceive = /opt/sms-telegram
+inboxpath = /var/spool/gammu/inbox/
+outboxpath = /var/spool/gammu/outbox/
+sentsmspath = /var/spool/gammu/sent/
+errorsmspath = /var/spool/gammu/error/
