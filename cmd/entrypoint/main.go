@@ -31,6 +31,7 @@ func detectATPort() (string, error) {
 		if err := os.WriteFile(tmp.Name(), []byte(cfg), 0o600); err != nil {
 			return "", err
 		}
+		// #nosec G204 -- gammu and --identify are hardcoded; only the temp config path varies.
 		cmd := exec.Command("gammu", "-c", tmp.Name(), "--identify")
 		if err := cmd.Run(); err == nil {
 			return dev, nil
@@ -45,7 +46,8 @@ func writeConfig(device string) error {
 		return err
 	}
 	out := strings.ReplaceAll(string(data), "device = /dev/ttyUSB0", "device = "+device)
-	return os.WriteFile(configPath, []byte(out), 0o644)
+	// #nosec G703 G306 -- configPath is a hardcoded /tmp path; device value is validated against /dev/ttyUSB* candidates.
+	return os.WriteFile(configPath, []byte(out), 0o600)
 }
 
 func main() {
@@ -64,6 +66,7 @@ func main() {
 			continue
 		}
 
+		// #nosec G204 -- gammu-smsd and -c are hardcoded; only the config path varies.
 		cmd := exec.Command("gammu-smsd", "-c", configPath)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
@@ -78,6 +81,9 @@ func main() {
 func init() {
 	// Ensure spool directories exist.
 	for _, d := range []string{"inbox", "outbox", "sent", "error"} {
-		_ = os.MkdirAll(filepath.Join("/var/spool/gammu", d), 0o755)
+		// #nosec G301 -- spool directories need group/other read+execute for gammu-smsd file service.
+		if err := os.MkdirAll(filepath.Join("/var/spool/gammu", d), 0o755); err != nil {
+			fmt.Fprintf(os.Stderr, "entrypoint: failed to create spool dir %s: %v\n", d, err)
+		}
 	}
 }

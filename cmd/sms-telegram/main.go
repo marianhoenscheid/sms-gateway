@@ -48,11 +48,14 @@ func main() {
 	form.Set("text", msg)
 
 	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/sendMessage", token)
+	// #nosec G107 -- URL is constructed from a trusted, hardcoded Telegram endpoint; token is an env secret.
 	resp, err := http.PostForm(apiURL, form)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "sms-telegram: request failed: %v\n", err)
 		os.Exit(1)
 	}
 	defer resp.Body.Close()
-	io.Copy(io.Discard, resp.Body)
+	if _, err := io.Copy(io.Discard, resp.Body); err != nil {
+		fmt.Fprintf(os.Stderr, "sms-telegram: failed to drain response: %v\n", err)
+	}
 }

@@ -1,2 +1,7 @@
 .DS_Store
 .env
+gosec
+gosec.tar.gz
+trivy
+trivy.tar.gz
+.trivycache/
