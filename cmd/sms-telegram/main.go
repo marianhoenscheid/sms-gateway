@@ -15,11 +15,6 @@ func env(name string) string {
 }
 
 func main() {
-	fmt.Fprintf(os.Stderr, "sms-telegram: invoked, env count=%d\n", len(os.Environ()))
-	for _, e := range os.Environ() {
-		fmt.Fprintf(os.Stderr, "sms-telegram: env %s\n", e)
-	}
-
 	token := env("TELEGRAM_TOKEN")
 	chatID := env("TELEGRAM_CHAT_ID")
 	if token == "" || chatID == "" {

@@ -1,0 +1,106 @@
+stages:
+  - build
+  - test
+  - scan
+  - publish
+
+variables:
+  IMAGE_NAME: "$CI_REGISTRY_IMAGE"
+  IMAGE_TAG: "$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA"
+  FULL_IMAGE: "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG-$CI_COMMIT_SHORT_SHA"
+  DOCKERHUB_IMAGE: "$DOCKERHUB_USERNAME/sms-gateway"
+
+build:
+  stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - /kaniko/executor
+      --context "$CI_PROJECT_DIR"
+      --dockerfile "$CI_PROJECT_DIR/Dockerfile"
+      --destination "$FULL_IMAGE"
+      --cache=true
+      --cache-ttl 24h
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+go-test:
+  stage: test
+  image: golang:1.23-bookworm
+  script:
+    - go test ./...
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+go-vet:
+  stage: test
+  image: golang:1.23-bookworm
+  script:
+    - go vet ./...
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+gosec:
+  stage: test
+  image: securego/gosec:latest
+  script:
+    - gosec -fmt sarif -out gosec.sarif ./...
+  artifacts:
+    reports:
+      sast: gosec.sarif
+    when: always
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+container-scan:
+  stage: scan
+  image: aquasec/trivy:latest
+  variables:
+    TRIVY_NO_PROGRESS: "true"
+    TRIVY_CACHE_DIR: ".trivycache"
+  script:
+    - trivy image --exit-code 0 --format template --template "@contrib/sarif.tpl"
+        --output trivy-results.sarif "$FULL_IMAGE"
+    - trivy image --exit-code 1 --severity HIGH,CRITICAL "$FULL_IMAGE"
+  artifacts:
+    reports:
+      container_scanning: trivy-results.sarif
+    when: always
+  needs:
+    - job: build
+      artifacts: false
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+publish-dockerhub:
+  stage: publish
+  image:
+    name: gcr.io/kaniko-project/executor:debug
+    entrypoint: [""]
+  script:
+    - /kaniko/executor
+      --context "$CI_PROJECT_DIR"
+      --dockerfile "$CI_PROJECT_DIR/Dockerfile"
+      --destination "$DOCKERHUB_IMAGE:$IMAGE_TAG"
+      --destination "$DOCKERHUB_IMAGE:latest"
+      --cache=true
+      --cache-ttl 24h
+  needs:
+    - job: build
+      artifacts: false
+    - job: container-scan
+      artifacts: false
+    - job: go-test
+      artifacts: false
+    - job: go-vet
+      artifacts: false
+    - job: gosec
+      artifacts: false
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'

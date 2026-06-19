@@ -1,0 +1,8 @@
+[Unit]
+Description=SIM Keepalive SMS via gammu-smsd
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/sh -c '/usr/bin/docker exec sms-gateway gammu-smsd-inject -c /tmp/gammu-smsdrc TEXT +XXXXXXXXXXXXX -text "keepalive %%H"'
