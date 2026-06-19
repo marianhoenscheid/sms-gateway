@@ -28,7 +28,7 @@ build:
 
 go-test:
   stage: test
-  image: golang:1.23-bookworm
+  image: golang:1.25-bookworm
   script:
     - go test ./...
   rules:
@@ -37,7 +37,7 @@ go-test:
 
 go-vet:
   stage: test
-  image: golang:1.23-bookworm
+  image: golang:1.25-bookworm
   script:
     - go vet ./...
   rules:
@@ -46,7 +46,7 @@ go-vet:
 
 gosec:
   stage: test
-  image: golang:1.23-bookworm
+  image: golang:1.25-bookworm
   variables:
     GOSEC_VERSION: "2.22.1"
   script:
