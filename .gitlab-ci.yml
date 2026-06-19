@@ -46,9 +46,13 @@ go-vet:
 
 gosec:
   stage: test
-  image: securego/gosec:latest
+  image: golang:1.23-bookworm
+  variables:
+    GOSEC_VERSION: "2.22.1"
   script:
-    - gosec -fmt sarif -out gosec.sarif ./...
+    - curl -sSL -o gosec.tar.gz "https://github.com/securego/gosec/releases/download/v${GOSEC_VERSION}/gosec_${GOSEC_VERSION}_linux_amd64.tar.gz"
+    - tar -xzf gosec.tar.gz
+    - ./gosec -fmt sarif -out gosec.sarif ./...
   artifacts:
     reports:
       sast: gosec.sarif
@@ -59,14 +63,19 @@ gosec:
 
 container-scan:
   stage: scan
-  image: aquasec/trivy:latest
+  image: alpine:latest
   variables:
     TRIVY_NO_PROGRESS: "true"
     TRIVY_CACHE_DIR: ".trivycache"
+    TRIVY_VERSION: "0.61.0"
+  before_script:
+    - apk add --no-cache curl
+    - curl -sSL -o trivy.tar.gz "https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}/trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+    - tar -xzf trivy.tar.gz
   script:
-    - trivy image --exit-code 0 --format template --template "@contrib/sarif.tpl"
+    - ./trivy image --exit-code 0 --format template --template "@contrib/sarif.tpl"
         --output trivy-results.sarif "$FULL_IMAGE"
-    - trivy image --exit-code 1 --severity HIGH,CRITICAL "$FULL_IMAGE"
+    - ./trivy image --exit-code 1 --severity HIGH,CRITICAL "$FULL_IMAGE"
   artifacts:
     reports:
       container_scanning: trivy-results.sarif
